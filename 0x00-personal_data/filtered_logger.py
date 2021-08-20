@@ -5,6 +5,8 @@
 import logging
 from typing import List
 import re
+import mysql.connector
+import os
 
 
 PII_FIELDS = ('name', 'email', 'phone', 'ssn', 'ip')
@@ -51,3 +53,36 @@ def get_logger() -> logging.Logger:
     logger.addHandler(sh)
 
     return logger
+
+
+def get_db() -> mysql.connector.connection.MySQLConnection:
+    """connects to mysql database"""
+    return mysql.connector.connect(
+                    host=os.environ.get('PERSONAL_DATA_DB_HOST', 'localhost'),
+                    database=os.environ.get('PERSONAL_DATA_DB_NAME', 'root'),
+                    user=os.environ.get('PERSONAL_DATA_DB_USERNAME'),
+                    password=os.environ.get('PERSONAL_DATA_DB_PASSWORD', ''))
+
+
+def main():
+    """obtains a database connection using get_db and
+       retrieve all rows in the users table and
+       display each row under a filtered format
+    """
+    database = get_db()
+    cursor = database.cursor()
+    cursor.execute("SELECT * FROM users;")
+    fields = [i[0] for i in cursor.description]
+
+    log = get_logger()
+
+    for row in cursor:
+        rows = ''.join(f'{f}={str(r)}; ' for r, f in zip(row, fields))
+        log.info(rows.strip())
+
+    cursor.close()
+    database.close()
+
+
+if __name__ == '__main__':
+    main()
